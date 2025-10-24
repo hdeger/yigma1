@@ -720,9 +720,7 @@
             document.getElementById('coordsDisplay').innerHTML = 'Konum seçilmedi';
             document.getElementById('nextBtn1').disabled = true;
             
-            if (myLocation) {
-                map.setView([myLocation.lat, myLocation.lng], 18);
-            }
+
             
             document.getElementById('photoPreview').style.display = 'none';
             document.getElementById('startCameraBtn').style.display = 'block';
@@ -736,6 +734,15 @@
             document.getElementById('step' + currentStep).classList.remove('active');
             currentStep = 1;
             document.getElementById('step1').classList.add('active');
+                
+            setTimeout(() => {
+        if (map) {
+            map.invalidateSize();
+            if (myLocation) {
+                map.setView([myLocation.lat, myLocation.lng], 18);
+            }
+        }
+    }, 100);
         }
 
         function viewData() {
