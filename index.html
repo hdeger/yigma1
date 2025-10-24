@@ -472,21 +472,44 @@
         function initMap() {
             map = L.map('map').setView([37.1494, 30.5433], 15);
             
-            const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles © Esri'
-            });
-            
-            const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            });
-            
-            satellite.addTo(map);
-            
-            const baseMaps = {
-                "Uydu Görünümü": satellite,
-                "Sokak Haritası": street
-            };
-            L.control.layers(baseMaps).addTo(map);
+
+// 1. Esri Uydu
+const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles © Esri',
+    maxZoom: 19
+});
+
+// 2. Google Uydu (Sadece görüntü)
+const googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0','mt1','mt2','mt3'],
+    attribution: '© Google'
+});
+
+// 3. Google Hybrid (Görüntü + Yol isimleri)
+const googleHybrid = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0','mt1','mt2','mt3'],
+    attribution: '© Google Hybrid'
+});
+
+// 4. Sokak Haritası
+const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19
+});
+
+// Varsayılan olarak Google Hybrid başlat
+googleHybrid.addTo(map);
+
+// Katman seçici menüsü
+const baseMaps = {
+    "🛰️ Google Hybrid (Önerilen)": googleHybrid,
+    "🛰️ Google Uydu": googleSat,
+    "🛰️ Esri Uydu": esriSat,
+    "🗺️ Sokak Haritası": street
+};
+L.control.layers(baseMaps).addTo(map);
             
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
