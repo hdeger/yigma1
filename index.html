@@ -362,6 +362,7 @@
         };
         let allData = [];
         let currentStep = 'login';
+        let savedMarkers = []; // Kaydedilmiş binaların marker'larını tutacak
         let stream = null;
         let userName = '';
         let myLocation = null;
@@ -568,6 +569,36 @@
             }
         }
 
+
+        // Kaydedilmiş binaları haritada göster
+function addSavedBuildingMarker(lat, lng, buildingNumber) {
+    // Yeşil renkli, numaralı marker oluştur
+    const greenIcon = L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div style="background-color: #28a745; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${buildingNumber}</div>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+    });
+    
+    const savedMarker = L.marker([lat, lng], { icon: greenIcon })
+        .addTo(map)
+        .bindPopup(`<b>Bina ${buildingNumber}</b><br>Kaydedildi ✓`);
+    
+    savedMarkers.push(savedMarker);
+}
+
+// Tüm kaydedilmiş binaları haritada göster
+function showAllSavedBuildings() {
+    // Önce mevcut kaydedilmiş marker'ları temizle
+    savedMarkers.forEach(m => map.removeLayer(m));
+    savedMarkers = [];
+    
+    // Tüm kaydedilmiş binaları tekrar ekle
+    allData.forEach((data, index) => {
+        addSavedBuildingMarker(data.lat, data.lng, index + 1);
+    });
+}
+        
         // Kamera fonksiyonları
         async function startCamera() {
             try {
@@ -698,11 +729,15 @@
 
         // Veri kaydetme
         function saveCurrentData() {
-            currentData.datetime = new Date().toLocaleString('tr-TR');
-            currentData.userName = userName;
-            allData.push({...currentData});
-            console.log('Veri kaydedildi:', currentData);
-        }
+    currentData.datetime = new Date().toLocaleString('tr-TR');
+    currentData.userName = userName;
+    allData.push({...currentData});
+    
+    // Kaydedilen binayı haritaya kalıcı marker olarak ekle
+    addSavedBuildingMarker(currentData.lat, currentData.lng, allData.length);
+    
+    console.log('Veri kaydedildi:', currentData);
+}
 
         function saveAndNew() {
             currentData = {
@@ -736,13 +771,15 @@
             document.getElementById('step1').classList.add('active');
                 
             setTimeout(() => {
-        if (map) {
-            map.invalidateSize();
-            if (myLocation) {
-                map.setView([myLocation.lat, myLocation.lng], 18);
-            }
+    if (map) {
+        map.invalidateSize();
+        // Kaydedilmiş tüm binaları göster
+        showAllSavedBuildings();
+        if (myLocation) {
+            map.setView([myLocation.lat, myLocation.lng], 18);
         }
-    }, 100);
+    }
+}, 100);
         }
 
         function viewData() {
