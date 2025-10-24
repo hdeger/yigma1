@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bina Veri Toplama</title>
+    <title>Yığma (Kargir-Ahşap) Bina Veri Toplama</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -271,7 +271,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏢 Bina Veri Toplama</h1>
+            <h1>🏢 Yığma (Kargir-Ahşap) Bina Veri Toplama</h1>
             <p>Saha Veri Toplama Sistemi</p>
         </div>
         
@@ -376,69 +376,69 @@
             },
             {
                 id: 2,
-                text: "Görsel kalite durumu",
-                options: ["İyi", "Orta", "Kötü"],
+                text: "Mevcut hasar durumu",
+                options: ["Var", "Yok"],
                 helpImage: null
             },
             {
                 id: 3,
-                text: "Zemin eğimli mi?",
-                options: ["Düz", "Eğimli"],
+                text: "Malzeme kalitesi",
+                options: ["İyi", "Orta", "Kötü"],
                 helpImage: null
             },
             {
                 id: 4,
-                text: "Yapı türü ne?",
-                options: ["Kolon", "Kolon+Perde"],
-                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi0rtEJMhWlpMaED3-lpCBIfb1BzRvcShpwMbBPnYU5QGD18xw8JMLU8lXfvZlZ7Lu1tACCRecgAbU7jhtKg8b1_AA2vKlPGTXMbo6rhg9k-5PY6l7TlfYFIug-jHfQs-ET6O07LmStILellP2dQcgbjVXUP2SLFwjslRxGtUkZsEusisqfuUid48IeVEA/s320/yapituru.png"
+                text: "Çatı malzemesi",
+                options: ["Kiremit", "Beton", "Sac", "Toprak"],
+                helpImage: null
             },
             {
                 id: 5,
-                text: "Zayıf kat var mı?",
-                options: ["Var", "Yok"],
-                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgiSCm4d_EZkA62vHTmgs8p-Goysg8dZGE2SA3NTWKjja7sSKilJvRW6TPft0VMSFmnixhV3DNMUFtHqoRfBF5eEh9tPlC35WEG-lDArk020xjKNSe0kqAJptQytYdquA-Ts5cWVW2VGGT2OzURhIToEAFUeuvt5ukpAe7JY1F3a6dyr5fEoAgasIBve4Q/s320/zayifkat.png"
+                text: "Yapı türü ne?",
+                options: ["Donatısız yığma", "Karma(beton çerçeveli)", "Donatılı Yığma", "Kuşatılmış Yığma"],
+                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEik_dIKgu18u_RXRD8m40Of5Bv6DYNQu_rgaaTnTqTt_fQv_PJqlahZ_LOCsdsHFXUbOJuxT3Igf3hApBTq0Gk30rulAmqmPm4H4lXV1QCD-Dq2PGN4jO-ZxGOYrGkngbsOKXEanTlFRahb98FEaGtCJtK-qlHsKmkPjB-5mrKLedp4UFoch2nIN49EQwo/s320/yapituru.png"
             },
             {
                 id: 6,
-                text: "Serbest kat adedi",
-                options: ["1-2", "3", "4", "5", "6-7"],
-                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgG5AH3Ha4g6GeCe9ZdMybUm2EqxBh-x7618wfVy0tE1xdf7qUflf3G54iu63dnoRU7_vHlz1aW5tJyCJGB7uOoUj1KRdjsUCeD4xJKIHv79w83tcZ3_hyPeixISlOqrbNNNoa4vNz0GSPEHA4rGBvHh_mt_KbesWlY4m50WzKMAcAl8V1GfYk1qomLDb8/s320/serbestkatadedi.png"
+                text: "Zayıf kat var mı?",
+                options: ["Yok", "Var"],
+                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhMXmT0-cIdqvK3zIDly3C2UaUegkjDP6T-CEAY3gQZdoewqKMFXJ4Qz7PQbYRGjAPrUeKAVeXqCVa9WIHn0_ws4-gSnRxWQAhhNLUaRGVLZxYGW52kMyf96pXJGC7djT1598ykUt29L9Khkln1tm2-axr1gThfq9GkVIh0yxiQxB4A2cddHCgZnFI4C-o/s320/yumusakkat.png"
             },
             {
                 id: 7,
-                text: "Düşeyde düzensizlik var mı?",
-                options: ["Var", "Yok"],
-                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhqSkEFjjlVwTj1IeUufyFQb_Qu1qgkD5IW5s67M1-4eEEjwA9xRKAgRiFq7a6KcsAwGBHhyZVW9L7hTaQ9_jB9Ipms8oLpTXeaBce4eCbPZsx4tcNnQKFVE4Cm4GuqNQtXzI1GXZxNddN7YGpGNOAepkJ8iA_7qIFJoZyiYhBHNy3R_JBCMb-vWSim5aE/s320/d%C3%BCseyd%C3%BCzensizlik.png"
+                text: "Serbest kat adedi",
+                options: ["1", "2", "3", "4", "5"],
+                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgZuxmfibdFI1gvS5Mm5Wab-xUS3mlJ-i1bwJnbypA8p8yZnbcypv6kjQHbga3xtQ1KZMeYFMz0k9XW1QsgStZge63_AwZgQZxbUNP9rM1iFh9i8OP6M08NVDqJ1xG1Qe6M3GbSBLIxStSZtHcLnIVIglaKemXle7jK9iy2strhP3hNGS5OcSyyLk2e9A8/s320/serbestkatadedi.png"
             },
             {
                 id: 8,
-                text: "Ağır çıkma var mı?",
-                options: ["Var", "Yok"],
-                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi8wX26bS5B4kswwLP1WvaTtMTM4ajuu3rwd2qhfaHlkiRJvZqCXo64INvcSP6iOnnSnvaWO1Kiw6IvZ0wjQtFW7Lta7ktacwIjMfUOR1rPIlyFWZrce2NMDj0Vb-mgdwoxLHJb51PNViIFDmjghLq0if_s0G7fnxFjNtg6ezV_0FfehfVrdkSV46s1shE/s320/agircikma.png"
+                text: "Düşey düzensizlik durumu",
+                options: ["Düzenli", "Az düzenli", "Düzensiz"],
+                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjSnl7TH4x2mmSOJ6kSLJqtzNZEXAAO4Uuoxixz7sh0ik_NTfUYOXdbhYZi5mUW5Q6bgbmDbLbEcHbB5pCtJ07W8IXSJb1IRZiFkuLdjmC-tF9GSsn2Cu5Nd2oaUoGJH2kp9P_uUFaeI4GgvrJQKufirNJXwqdGhk1Kj_OoOxhNqfTqvOgpJLCvRbiQUHY/s320/binad%C3%BCseyboslukd%C3%BCzeni.png"
             },
             {
                 id: 9,
-                text: "Planda düzensizlik var mı?",
-                options: ["Var", "Yok"],
-                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi2SM-u-a_zgG4_eS2SI9BI3QrEpCaKxnT50N92ds6hmlytmRfzHoYoRZDrWKZ9PWhunFR8tM7Rcr1-2xCj8iL2xoG9M5Nz8sXu5DYuxfFwNS8IE8KyWOSO8jTaE1zsOsrbpGLuTXIr7Q8jGiwCKhstiuyfBpS1L4TK5DDf7ujoe7KoTp4cwIC90r6xspU/s1049/plandaduzensizlik.png"
+                text: "Cepheye göre kat farklılığı var mı?",
+                options: ["Yok", "Var"],
+                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjWbZubWKV_urF19LfwR9-WsGfgqShK-ABHh2fR_C9UxSZK7VJQWKjAxaTwAT0_3Gc1y7dzG6lepWj0ZpDsUG680q4N4eVIcoG7oIiZm9WkKIbhwVx2rcBwm3e9vV2RbNqByvGKlWVl9Ij3oipBff99m9qLquTtjPdaOkqOgWZL-03ptjvzr8-xDF09QOU/s320/katfarkliligi.png"
             },
             {
                 id: 10,
-                text: "Kısa kolon var mı?",
-                options: ["Var", "Yok"],
-                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg9NVJB2CXwMqoh_xb8b47_PiQrnMFYZgI3e_0wAYlI5VJaXjwPAs0YLFUvGA0fqM1fNei6wZztz5r4Asz-VN1TTCxW5pAaGQpyNoW3G-_rW7KkcAMUGgtpszNIno_7yhfXEQk3TxcIhlYrH7z4kp1bNMxkUcbIGE9Z-NqXVKtVMQlLD_dNO2lgOiFqsP8/s320/kisakolon.png"
+                text: "Planda düzensizlik var mı?",
+                options: ["Düzenli", "Düzensiz", "Aşırı düzensiz"],
+                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjXkz0UWJSYwfCLHji8A620vmMNFXrY605gJuWuQanNNl0FX2ndKKNXXoPzzm19x0QMpBbKIXmxbWRWxFwUNQeTb5LZzg-RPSoHOiaqSArOx0CsOfsFvgCyyBPQvWMaO2diVF2wZe2AVONZsxScb9vOu6VRtGGD0xJWO7Lxt8zZa-o29sui40oyr2Pn76M/s320/plandaduzensizlik.png"
             },
             {
                 id: 11,
                 text: "Yapı nizam durumu",
                 options: ["Ayrık", "Bitişik", "Köşede bitişik"],
-                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg77wCS5baZ_LbAAzvaSAeJdtiU0AsoevmvIrGxrtGfTgBLt8G0ovi28xGCNwsDwtfCCcqu1ecfksCoPM5r-AZ6Ncl8vvUrsppfxRpHNZX415Gd-0R4LyIQv8a2SeiBsAR2WiDOg5dfe84B4UWyiKJBTBkdl4SyVFap2t7poR5UQlJ5XC91dD9DAlFVk_A/s320/yapinizam.png"
+                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi7ArTePp_fcavw8ZXSYdbGkMLnBaUvJtYgI13DhbwDX9rSTQ5j4m8IBEODMKCcJ0ph2QbEU5tKC33yukkgeKjZsW3l_e-c4zx0XBYDsdHannU8ATW8ZlPKeAM2GBEUYU5chLSl7zi5V0ce8rpUuCVMIfFADKb9YrUI0HlwBa6gpB3-OE_-50au8r_Exzs/s1600/yapinizam.png"
             },
             {
                 id: 12,
                 text: "Bitişik binalarla döşeme seviyesi",
                 options: ["Aynı", "Farklı"],
-                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgaG4cKAbxNERF3uDvOpdqh7v6Xc3ysEf6DXqwUfJAI1JbJpAyfEkpusKKiqh-lFocbrlYAdVsqEmfEYrg3qSQcHfMeuMEKGsebux2lYUq44ZMklK5kTkbdKWQzc4P6y4SzGLFPDj2sCsCOQT_vrmD8KFFEZk9kbLwRuKXYoX3PE1Hax7Hj7YTAa1YWqsM/s320/dosemeseviyesi.png"
+                helpImage: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiv8-mSf9-KG_gZeMKgpCkMBvrweX7F7j6iWhNv4d4ajbIdNuh-HTY_lvys4Rda7JI5R6E5yKgszhLh4TJVRZJNEZ93MCpS-xbZEbxVyv-QTpf0Iymk0GtJSTbzwP1zjSvFTROjJ9V7YnKzKUau11zF39MHMPkqLBAerXICrpagJ0u3_0aezVXlC26nxpc/s320/dosemeseviyesi.png"
             }
         ];
 
