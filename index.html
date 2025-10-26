@@ -8,6 +8,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
     <style>
         * {
             margin: 0;
@@ -117,6 +118,10 @@
             background: #28a745;
             color: white;
         }
+        .btn-drive {
+            background: linear-gradient(135deg, #4285F4 0%, #34A853 100%);
+            color: white;
+        }
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -215,6 +220,11 @@
             margin-bottom: 15px;
             font-size: 14px;
         }
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
         .login-screen {
             padding: 40px 20px;
             text-align: center;
@@ -266,13 +276,54 @@
         #map-container {
             position: relative;
         }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .loading-overlay.active {
+            display: flex;
+        }
+        .loading-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div id="loadingText">Google Drive'a yükleniyor...</div>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header">
             <h1>🏢 Yığma (Kargir-Ahşap) Bina Veri Toplama</h1>
-            <p>Saha Veri Toplama Sistemi</p>
+            <p>Saha Veri Toplama Sistemi - Google Drive Entegrasyonlu</p>
         </div>
         
         <div class="content">
@@ -282,7 +333,7 @@
                     <h2>📋 Veri Toplama Başlangıç</h2>
                     <p>Lütfen bölge bilgilerinizi girin</p>
                     <div class="input-group">
-                        <input type="text" id="userNameInput" placeholder="Bölge kodu" />
+                        <input type="text" id="userNameInput" placeholder="Bölge kodu veya adınız" />
                     </div>
                     <button class="btn btn-primary" onclick="startDataCollection()">Başla</button>
                 </div>
@@ -332,9 +383,10 @@
 
             <!-- Adım 4: Kaydetme -->
             <div class="step" id="step4">
-                <div class="step-title">✅ Kaydet ve Yeni Bina</div>
-                <div class="alert">Veriler başarıyla kaydedildi! Yeni bir bina ekleyebilir veya verileri Excel'e aktarabilirsiniz.</div>
+                <div class="step-title">✅ Kaydet ve Gönder</div>
+                <div class="alert alert-success">Veriler başarıyla kaydedildi! Şimdi Google Drive'a gönderebilir veya yeni bina ekleyebilirsiniz.</div>
                 
+                <button class="btn btn-drive" onclick="uploadToDrive()">📤 Google Drive'a Gönder</button>
                 <button class="btn btn-success" onclick="saveAndNew()">Yeni Bina Ekle</button>
                 <button class="btn btn-primary" onclick="viewData()">Toplanan Verileri Gör</button>
             </div>
@@ -343,13 +395,24 @@
             <div class="step" id="step5">
                 <div class="step-title">📊 Toplanan Veriler</div>
                 <div id="dataList" class="data-list"></div>
-                <button class="btn btn-success" onclick="exportToExcel()">Excel'e Aktar</button>
-                <button class="btn btn-primary" onclick="saveAndNew()">Yeni Bina Ekle</button>
+                <button class="btn btn-drive" onclick="uploadToDrive()">📤 Tümünü Drive'a Gönder</button>
+                <button class="btn btn-success" onclick="saveAndNew()">Yeni Bina Ekle</button>
             </div>
         </div>
     </div>
 
     <script>
+        // Google Drive API Ayarları
+        const CLIENT_ID = '384693908039-8v2so7u7ktn33q4abenurdbg4vcuddm4.apps.googleusercontent.com';
+        const API_KEY = 'AIzaSyAyTA6cKkHfKlo6R3QbeNMCP3q7fjnMdhI';
+        const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+        let gapiInited = false;
+        let gisInited = false;
+        let tokenClient;
+        let accessToken = null;
+
         // Global değişkenler
         let map, marker, userLocationMarker;
         let currentData = {
@@ -362,12 +425,12 @@
         };
         let allData = [];
         let currentStep = 'login';
-        let savedMarkers = []; // Kaydedilmiş binaların marker'larını tutacak
+        let savedMarkers = [];
         let stream = null;
         let userName = '';
         let myLocation = null;
 
-        // 12 Soru - İlk 3 soruda resim yok, 4-12'de placeholder resim var
+        // 12 Soru
         const questions = [
             {
                 id: 1,
@@ -443,7 +506,28 @@
             }
         ];
 
-        // Kullanıcı girişi
+        // Google API Başlatma
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: DISCOVERY_DOCS,
+            });
+            gapiInited = true;
+        }
+
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '',
+            });
+            gisInited = true;
+        }
+
         function startDataCollection() {
             const nameInput = document.getElementById('userNameInput');
             const name = nameInput.value.trim();
@@ -464,52 +548,48 @@
             setTimeout(() => {
                 if (map) {
                     map.invalidateSize();
+                    showAllSavedBuildings();
+                    if (myLocation) {
+                        map.setView([myLocation.lat, myLocation.lng], 18);
+                    }
                 }
             }, 100);
         }
 
-        // Harita başlatma
         function initMap() {
             map = L.map('map').setView([37.1494, 30.5433], 15);
             
+            const googleHybrid = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+                maxZoom: 20,
+                subdomains: ['mt0','mt1','mt2','mt3'],
+                attribution: '© Google Hybrid'
+            });
 
-// 1. Esri Uydu
-const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'Tiles © Esri',
-    maxZoom: 19
-});
+            const googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                maxZoom: 20,
+                subdomains: ['mt0','mt1','mt2','mt3'],
+                attribution: '© Google'
+            });
 
-// 2. Google Uydu (Sadece görüntü)
-const googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-    maxZoom: 20,
-    subdomains: ['mt0','mt1','mt2','mt3'],
-    attribution: '© Google'
-});
+            const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles © Esri',
+                maxZoom: 19
+            });
 
-// 3. Google Hybrid (Görüntü + Yol isimleri)
-const googleHybrid = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
-    maxZoom: 20,
-    subdomains: ['mt0','mt1','mt2','mt3'],
-    attribution: '© Google Hybrid'
-});
+            const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            });
 
-// 4. Sokak Haritası
-const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-    maxZoom: 19
-});
+            googleHybrid.addTo(map);
 
-// Varsayılan olarak Google Hybrid başlat
-googleHybrid.addTo(map);
-
-// Katman seçici menüsü
-const baseMaps = {
-    "🛰️ Google Hybrid (Önerilen)": googleHybrid,
-    "🛰️ Google Uydu": googleSat,
-    "🛰️ Esri Uydu": esriSat,
-    "🗺️ Sokak Haritası": street
-};
-L.control.layers(baseMaps).addTo(map);
+            const baseMaps = {
+                "🛰️ Google Hybrid (Önerilen)": googleHybrid,
+                "🛰️ Google Uydu": googleSat,
+                "🛰️ Esri Uydu": esriSat,
+                "🗺️ Sokak Haritası": street
+            };
+            L.control.layers(baseMaps).addTo(map);
             
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
@@ -592,37 +672,30 @@ L.control.layers(baseMaps).addTo(map);
             }
         }
 
+        function addSavedBuildingMarker(lat, lng, buildingNumber) {
+            const greenIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div style="background-color: #28a745; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${buildingNumber}</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+            
+            const savedMarker = L.marker([lat, lng], { icon: greenIcon })
+                .addTo(map)
+                .bindPopup(`<b>Bina ${buildingNumber}</b><br>Kaydedildi ✓`);
+            
+            savedMarkers.push(savedMarker);
+        }
 
-        // Kaydedilmiş binaları haritada göster
-function addSavedBuildingMarker(lat, lng, buildingNumber) {
-    // Yeşil renkli, numaralı marker oluştur
-    const greenIcon = L.divIcon({
-        className: 'custom-div-icon',
-        html: `<div style="background-color: #28a745; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${buildingNumber}</div>`,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15]
-    });
-    
-    const savedMarker = L.marker([lat, lng], { icon: greenIcon })
-        .addTo(map)
-        .bindPopup(`<b>Bina ${buildingNumber}</b><br>Kaydedildi ✓`);
-    
-    savedMarkers.push(savedMarker);
-}
-
-// Tüm kaydedilmiş binaları haritada göster
-function showAllSavedBuildings() {
-    // Önce mevcut kaydedilmiş marker'ları temizle
-    savedMarkers.forEach(m => map.removeLayer(m));
-    savedMarkers = [];
-    
-    // Tüm kaydedilmiş binaları tekrar ekle
-    allData.forEach((data, index) => {
-        addSavedBuildingMarker(data.lat, data.lng, index + 1);
-    });
-}
+        function showAllSavedBuildings() {
+            savedMarkers.forEach(m => map.removeLayer(m));
+            savedMarkers = [];
+            
+            allData.forEach((data, index) => {
+                addSavedBuildingMarker(data.lat, data.lng, index + 1);
+            });
+        }
         
-        // Kamera fonksiyonları
         async function startCamera() {
             try {
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -663,7 +736,7 @@ function showAllSavedBuildings() {
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
             
-            currentData.photo = canvas.toDataURL('image/jpeg', 0.8);
+            currentData.photo = canvas.toDataURL('image/jpeg', 0.6);
             preview.src = currentData.photo;
             preview.style.display = 'block';
             
@@ -685,7 +758,6 @@ function showAllSavedBuildings() {
             currentData.photo = null;
         }
 
-        // Soruları render et
         function renderQuestions() {
             const container = document.getElementById('questionsContainer');
             container.innerHTML = '';
@@ -728,7 +800,6 @@ function showAllSavedBuildings() {
             }
         }
 
-        // Adım geçişleri
         function nextStep() {
             document.getElementById('step' + currentStep).classList.remove('active');
             currentStep++;
@@ -750,17 +821,15 @@ function showAllSavedBuildings() {
             document.getElementById('step' + currentStep).classList.add('active');
         }
 
-        // Veri kaydetme
         function saveCurrentData() {
-    currentData.datetime = new Date().toLocaleString('tr-TR');
-    currentData.userName = userName;
-    allData.push({...currentData});
-    
-    // Kaydedilen binayı haritaya kalıcı marker olarak ekle
-    addSavedBuildingMarker(currentData.lat, currentData.lng, allData.length);
-    
-    console.log('Veri kaydedildi:', currentData);
-}
+            currentData.datetime = new Date().toLocaleString('tr-TR');
+            currentData.userName = userName;
+            allData.push({...currentData});
+            
+            addSavedBuildingMarker(currentData.lat, currentData.lng, allData.length);
+            
+            console.log('Veri kaydedildi:', currentData);
+        }
 
         function saveAndNew() {
             currentData = {
@@ -778,8 +847,6 @@ function showAllSavedBuildings() {
             document.getElementById('coordsDisplay').innerHTML = 'Konum seçilmedi';
             document.getElementById('nextBtn1').disabled = true;
             
-
-            
             document.getElementById('photoPreview').style.display = 'none';
             document.getElementById('startCameraBtn').style.display = 'block';
             document.getElementById('retakeBtn').style.display = 'none';
@@ -792,17 +859,16 @@ function showAllSavedBuildings() {
             document.getElementById('step' + currentStep).classList.remove('active');
             currentStep = 1;
             document.getElementById('step1').classList.add('active');
-                
+            
             setTimeout(() => {
-    if (map) {
-        map.invalidateSize();
-        // Kaydedilmiş tüm binaları göster
-        showAllSavedBuildings();
-        if (myLocation) {
-            map.setView([myLocation.lat, myLocation.lng], 18);
-        }
-    }
-}, 100);
+                if (map) {
+                    map.invalidateSize();
+                    showAllSavedBuildings();
+                    if (myLocation) {
+                        map.setView([myLocation.lat, myLocation.lng], 18);
+                    }
+                }
+            }, 100);
         }
 
         function viewData() {
@@ -829,81 +895,236 @@ function showAllSavedBuildings() {
             document.getElementById('step5').classList.add('active');
         }
 
-        // Excel ve Fotoğrafları ZIP olarak aktar
-        function exportToExcel() {
+        async function uploadToDrive() {
             if (allData.length === 0) {
                 alert('Henüz veri yok!');
                 return;
             }
-            
-            // Excel verisini hazırla
-            const ws_data = [
-                ['Bina No', 'Kullanıcı', 'Tarih-Saat', 'Enlem', 'Boylam', ...questions.map(q => q.text), 'Fotoğraf Dosyası']
-            ];
-            
-            allData.forEach((data, index) => {
-                const row = [
-                    index + 1,
-                    data.userName || userName,
-                    data.datetime,
-                    data.lat,
-                    data.lng,
-                    ...questions.map(q => data.answers[q.id] || '-'),
-                    data.photo ? `fotograflar/bina_${index + 1}.jpg` : 'Yok'
-                ];
-                ws_data.push(row);
-            });
-            
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(ws_data);
-            XLSX.utils.book_append_sheet(wb, ws, 'Bina Verileri');
-            
-            // Excel'i binary olarak oluştur
-            const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            
-            const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
-            const safeUserName = userName.replace(/\s+/g, '_');
-            
-            // ZIP oluştur
-            createCompleteZip(excelBuffer, safeUserName, timestamp);
-        }
-        
-        // Excel ve Fotoğrafları tek ZIP'te birleştir
-        function createCompleteZip(excelBuffer, safeUserName, timestamp) {
-            const zip = new JSZip();
-            
-            // Excel dosyasını ekle
-            const excelFilename = `${safeUserName}_bina_verileri_${timestamp}.xlsx`;
-            zip.file(excelFilename, excelBuffer);
-            
-            // Fotoğraflar klasörü oluştur ve fotoğrafları ekle
-            const photosFolder = zip.folder("fotograflar");
-            let photoCount = 0;
-            
-            allData.forEach((data, index) => {
-                if (data.photo) {
-                    const base64Data = data.photo.split(',')[1];
-                    photosFolder.file(`bina_${index + 1}.jpg`, base64Data, {base64: true});
-                    photoCount++;
+
+            if (!gapiInited || !gisInited) {
+                alert('Google Drive yükleniyor, lütfen bekleyin...');
+                return;
+            }
+
+            showLoading('Google hesabınıza giriş yapılıyor...');
+
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    hideLoading();
+                    throw (resp);
                 }
-            });
-            
-            // ZIP'i indir
-            const zipFilename = `${safeUserName}_ygma_${timestamp}`;
-            zip.generateAsync({type: "blob"}).then(function(content) {
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(content);
-                link.download = zipFilename + '.zip';
-                link.click();
-                
-                alert(`✅ İndirme tamamlandı!\n\n📦 Dosya: ${zipFilename}.zip\n📊 Excel dosyası ve ${photoCount} fotoğraf ZIP içinde!\n\nTek dosyayı gönderin!`);
-            });
+                accessToken = gapi.client.getToken().access_token;
+                await uploadFilesToDrive();
+            };
+
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                tokenClient.requestAccessToken({prompt: ''});
+            }
         }
 
-        // Sayfa yüklendiğinde haritayı başlat
+        async function uploadFilesToDrive() {
+            try {
+                showLoading('"Yigma" ana klasörü kontrol ediliyor...');
+                
+                const timestamp = new Date().toISOString().slice(0,10);
+                const safeUserName = userName.replace(/\s+/g, '_');
+                const mainFolderName = `${safeUserName}_${timestamp}`;
+                
+                // "Yigma" klasörünü bul veya oluştur
+                const yigmaFolder = await findOrCreateFolder('Yigma', null);
+                
+                if (!yigmaFolder || !yigmaFolder.id) {
+                    throw new Error('Yigma klasörü oluşturulamadı');
+                }
+                
+                showLoading('Kullanıcı klasörü oluşturuluyor...');
+                
+                // Kullanıcı klasörünü yigma klasörü içinde oluştur
+                const mainFolder = await createFolder(mainFolderName, yigmaFolder.id);
+                
+                if (!mainFolder || !mainFolder.id) {
+                    throw new Error('Kullanıcı klasörü oluşturulamadı');
+                }
+                
+                // Fotoğraflar klasörünü oluştur
+                showLoading('Fotoğraflar klasörü oluşturuluyor...');
+                const photosFolder = await createFolder('fotograflar', mainFolder.id);
+                
+                // Excel dosyası oluştur
+                showLoading('Excel dosyası hazırlanıyor...');
+                const ws_data = [
+                    ['Bina No', 'Kullanıcı', 'Tarih-Saat', 'Enlem', 'Boylam', ...questions.map(q => q.text), 'Fotoğraf Dosyası']
+                ];
+                
+                allData.forEach((data, index) => {
+                    const row = [
+                        index + 1,
+                        data.userName || userName,
+                        data.datetime,
+                        data.lat,
+                        data.lng,
+                        ...questions.map(q => data.answers[q.id] || '-'),
+                        data.photo ? `fotograflar/bina_${index + 1}.jpg` : 'Yok'
+                    ];
+                    ws_data.push(row);
+                });
+                
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(ws_data);
+                XLSX.utils.book_append_sheet(wb, ws, 'Bina Verileri');
+                const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                
+                // Excel dosyasını yükle
+                showLoading('Excel dosyası yükleniyor...');
+                const excelBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                await uploadFile(excelBlob, `${mainFolderName}.xlsx`, mainFolder.id);
+                
+                // Fotoğrafları yükle
+                let uploadedPhotos = 0;
+                const totalPhotos = allData.filter(d => d.photo).length;
+                for (let i = 0; i < allData.length; i++) {
+                    if (allData[i].photo) {
+                        showLoading(`Fotoğraf yükleniyor... (${uploadedPhotos + 1}/${totalPhotos})`);
+                        const base64Data = allData[i].photo.split(',')[1];
+                        const blob = base64ToBlob(base64Data, 'image/jpeg');
+                        await uploadFile(blob, `bina_${i + 1}.jpg`, photosFolder.id);
+                        uploadedPhotos++;
+                    }
+                }
+                
+                hideLoading();
+                alert(`✅ Başarıyla Google Drive'a yüklendi!\n\n📁 Klasör: Yigma/${mainFolderName}\n📊 Excel dosyası: 1 adet\n📸 Fotoğraf: ${uploadedPhotos} adet\n\nGoogle Drive'ınızı kontrol edin!`);
+                
+            } catch (error) {
+                hideLoading();
+                console.error('Yükleme hatası:', error);
+                alert('❌ Yükleme sırasında hata oluştu: ' + error.message);
+            }
+        }
+
+        async function findOrCreateFolder(folderName, parentId) {
+            try {
+                let query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+                if (parentId) {
+                    query += ` and '${parentId}' in parents`;
+                } else {
+                    query += ` and 'root' in parents`;
+                }
+                
+                const searchResponse = await fetch(
+                    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)`, 
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': 'Bearer ' + accessToken
+                        }
+                    }
+                );
+                
+                if (!searchResponse.ok) {
+                    console.error('Arama hatası:', await searchResponse.text());
+                    return await createFolder(folderName, parentId);
+                }
+                
+                const searchResult = await searchResponse.json();
+                
+                if (searchResult.files && searchResult.files.length > 0) {
+                    console.log('Mevcut klasör bulundu:', searchResult.files[0]);
+                    return searchResult.files[0];
+                }
+                
+                console.log('Yeni klasör oluşturuluyor:', folderName);
+                return await createFolder(folderName, parentId);
+                
+            } catch (error) {
+                console.error('findOrCreateFolder hatası:', error);
+                return await createFolder(folderName, parentId);
+            }
+        }
+
+        async function createFolder(folderName, parentId) {
+            const metadata = {
+                name: folderName,
+                mimeType: 'application/vnd.google-apps.folder'
+            };
+            
+            if (parentId) {
+                metadata.parents = [parentId];
+            }
+            
+            const response = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + accessToken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(metadata)
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Klasör oluşturma hatası:', errorText);
+                throw new Error('Klasör oluşturulamadı: ' + errorText);
+            }
+            
+            return await response.json();
+        }
+
+        async function uploadFile(blob, fileName, parentId) {
+            const metadata = {
+                name: fileName,
+                parents: [parentId]
+            };
+            
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            form.append('file', blob);
+            
+            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + accessToken
+                },
+                body: form
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Dosya yükleme hatası:', errorText);
+                throw new Error('Dosya yüklenemedi: ' + errorText);
+            }
+            
+            return await response.json();
+        }
+
+        function base64ToBlob(base64, mimeType) {
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray], { type: mimeType });
+        }
+
+        function showLoading(text) {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('active');
+        }
+
         window.onload = function() {
             initMap();
+            gapiLoaded();
+            gisLoaded();
         };
     </script>
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
